@@ -21,7 +21,7 @@
 <body>
 
 <div class="card" id="login-screen">
-  <img src=https://nearpop.in/icons/logo.png style="height: 100%; width: 100%; object-fit: contain; />
+  <img src="https://nearpop.in/icons/logo.png" style="height: 100px; width: auto; object-fit: contain; margin-bottom: 20px;" />
   <p style="color: #94A3B8; margin-bottom: 30px;">Enterprise Bulk Listing Importer</p>
   <button class="btn" id="login-btn">Secure Merchant Login</button>
   <div id="login-status" style="margin-top: 15px; color: #EF4444; font-size: 14px;"></div>
@@ -41,7 +41,8 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
-import { getFirestore, doc, getDoc, collection, addDoc } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
+// 🚀 ADDED: Timestamp import
+import { getFirestore, doc, getDoc, collection, addDoc, Timestamp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyDYUm3VV8iuLHQKJuU9fWgaRaYU0t5Dlzk",
@@ -58,6 +59,7 @@ const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
 let currentUid = null;
+let currentMerchantName = "NearPop Merchant"; // 🚀 ADDED: Store merchant name
 
 // 2. THE GEOHASH MATH ENGINE (No live GPS required)
 const B32 = "0123456789bcdefghjkmnpqrstuvwxyz";
@@ -104,9 +106,12 @@ document.getElementById('login-btn').addEventListener('click', async () => {
     }
     
     currentUid = uid;
+    // 🚀 ADDED: Save their actual business name for the deals
+    currentMerchantName = userSnap.data().mname || "NearPop Merchant";
+    
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('upload-screen').classList.remove('hidden');
-    logMsg("✅ Authenticated as Merchant: " + (userSnap.data().mname || "VIP"));
+    logMsg("✅ Authenticated as Merchant: " + currentMerchantName);
     
   } catch (error) {
     status.textContent = "Login failed.";
@@ -143,24 +148,49 @@ document.getElementById('upload-btn').addEventListener('click', () => {
             continue;
           }
 
-          // Generate the Geohash locally!
+          // 🚀 ADDED: Generate BOTH Geohashes
           const hash5 = encodeGeoHash(lat, lng, 5);
+          const hash6 = encodeGeoHash(lat, lng, 6);
 
-          // Build the exact payload NearPop expects
+          // 🚀 FULLY UPDATED PAYLOAD: Matches the manual app creation exactly
           const dealData = {
             uid: currentUid,
             title: row.title || "Special Offer",
             desc: row.desc || "",
             price: row.price || "",
-            type: row.type || "deal", // deal, rental, pg, job
+            type: row.type || "deal",
             lat: lat,
             lng: lng,
-            geohash5: hash5, // The magic fix!
+            geohash5: hash5,
+            geohash6: hash6,
             status: "active",
-            budget: 100, // Default values
+            budget: 100,
             dailyPopupLimit: 1000,
             radius: 500,
-            createdAt: Date.now()
+            
+            // UI Defaults
+            emoji: "🏷️",
+            bg: "linear-gradient(135deg,#f7971e,#ffd200)",
+            color: "#FF5722",
+            owner: currentMerchantName,
+            ownerEmoji: "🏪",
+            ownerTag: "NearPop Merchant",
+            image: "",
+            priceLabel: "",
+            contact: "",
+            verified: true,
+            expiryDate: null,
+            startDate: new Date().toISOString().split('T')[0],
+            
+            // Analytics Baseline
+            popups: 0,
+            visits: 0,
+            claims: 0,
+            redemptions: 0,
+            popupsSentToday: 0,
+            
+            // Correct Timestamp Object
+            createdAt: Timestamp.now()
           };
 
           await addDoc(collection(db, 'listings'), dealData);
@@ -180,4 +210,3 @@ document.getElementById('upload-btn').addEventListener('click', () => {
 </script>
 </body>
 </html>
-
