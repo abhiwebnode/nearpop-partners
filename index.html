@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
 <title>NearPop Merchant — Bulk Upload</title>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800;900&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
@@ -20,7 +21,7 @@
 <body>
 
 <div class="card" id="login-screen">
-  <h1>NearPop VIP Portal</h1>
+  <img src=https://nearpop.in/icons/logo.png style="height: 100%; width: 100%; object-fit: contain; />
   <p style="color: #94A3B8; margin-bottom: 30px;">Enterprise Bulk Listing Importer</p>
   <button class="btn" id="login-btn">Secure Merchant Login</button>
   <div id="login-status" style="margin-top: 15px; color: #EF4444; font-size: 14px;"></div>
@@ -38,19 +39,17 @@
 </div>
 
 <script type="module">
-// 1. IMPORT FIREBASE (Paste your live config keys here)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
 import { getFirestore, doc, getDoc, collection, addDoc } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
-  // ⚠️ PASTE YOUR APP.JS FIREBASE CONFIG HERE ⚠️
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT",
-  storageBucket: "YOUR_PROJECT.firebasestorage.app",
-  messagingSenderId: "YOUR_ID",
-  appId: "YOUR_APP_ID"
+    apiKey: "AIzaSyDYUm3VV8iuLHQKJuU9fWgaRaYU0t5Dlzk",
+    authDomain: "nearpop-a432d.firebaseapp.com",
+    projectId: "nearpop-a432d",
+    storageBucket: "nearpop-a432d.firebasestorage.app",
+    messagingSenderId: "265333242320",
+    appId: "1:265333242320:web:f2cedec620ef08d4e161d5"
 };
 
 const app = initializeApp(firebaseConfig);
