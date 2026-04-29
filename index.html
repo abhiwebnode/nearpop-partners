@@ -41,7 +41,6 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
-// 🚀 FIXED: Swapped Timestamp for serverTimestamp to match create.html precisely
 import { getFirestore, doc, getDoc, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -61,7 +60,6 @@ const provider = new GoogleAuthProvider();
 let currentUid = null;
 let currentMerchantName = "NearPop Merchant";
 
-// 🚀 FIXED: Added TYPE_EXTRAS payload mapping to ensure dashboard arrays are met
 const TYPE_EXTRAS = {
   deal:   {bg:'linear-gradient(135deg,#f7971e,#ffd200)',color:'#FF5722',emoji:'🏷️',amenities:[{ic:'🏷️',lb:'Discount'},{ic:'📅',lb:'Limited Time'},{ic:'💳',lb:'Cards OK'}]},
   rental: {bg:'linear-gradient(135deg,#667eea,#764ba2)',color:'#3B82F6',emoji:'🏠',amenities:[{ic:'🏠',lb:'For Rent'},{ic:'📶',lb:'WiFi Ready'},{ic:'🔑',lb:'Keys Ready'}]},
@@ -69,7 +67,7 @@ const TYPE_EXTRAS = {
   job:    {bg:'linear-gradient(135deg,#10B981,#059669)',color:'#10B981',emoji:'💼',amenities:[{ic:'💰',lb:'Good Pay'},{ic:'📚',lb:'Training'},{ic:'🎯',lb:'Apply Now'}]},
 };
 
-// THE GEOHASH MATH ENGINE (Refined logic boundary to prevent slight shift calculation bugs)
+// THE GEOHASH MATH ENGINE
 const B32 = "0123456789bcdefghjkmnpqrstuvwxyz";
 function encodeGeoHash(lat, lng, precision = 5) {
   let isEven = true; let latR = [-90, 90], lngR = [-180, 180];
@@ -95,7 +93,7 @@ function logMsg(msg) {
   con.scrollTop = con.scrollHeight;
 }
 
-// AUTHENTICATION (The Gatekeeper)
+// AUTHENTICATION
 document.getElementById('login-btn').addEventListener('click', async () => {
   const status = document.getElementById('login-status');
   status.textContent = "Connecting to Firebase...";
@@ -145,22 +143,24 @@ document.getElementById('upload-btn').addEventListener('click', () => {
       for (let i = 0; i < rows.length; i++) {
         const row = rows[i];
         try {
-          const lat = parseFloat(row.lat);
-          const lng = parseFloat(row.lng);
+          let lat = parseFloat(row.lat);
+          let lng = parseFloat(row.lng);
           
           if (isNaN(lat) || isNaN(lng)) {
             logMsg(`⚠️ Skipped Row ${i+1}: Invalid coordinates.`);
             continue;
           }
 
+          // 🚀 FIXED: Standardize coordinates exactly to 6 decimal places to sync perfectly with create.html
+          lat = +lat.toFixed(6);
+          lng = +lng.toFixed(6);
+
           const hash5 = encodeGeoHash(lat, lng, 5);
           const hash6 = encodeGeoHash(lat, lng, 6);
 
-          // 🚀 FIXED: Dynamic payload matching create.html perfectly
           const type = row.type && TYPE_EXTRAS[row.type] ? row.type : "deal";
           const ext = TYPE_EXTRAS[type];
           
-          // Use CSV variables if provided, otherwise default to create.html standard minimums
           const budget = parseInt(row.budget) || 100;
           const radius = parseInt(row.radius) || 500;
 
@@ -173,7 +173,7 @@ document.getElementById('upload-btn').addEventListener('click', () => {
             emoji: ext.emoji,
             bg: ext.bg,
             color: ext.color,
-            amenities: ext.amenities, // Prevents UI crash map mapping
+            amenities: ext.amenities, 
             owner: currentMerchantName,
             ownerEmoji: "🏪",
             ownerTag: "NearPop Merchant",
@@ -196,7 +196,7 @@ document.getElementById('upload-btn').addEventListener('click', () => {
             dailyPopupLimit: budget * 10,
             popupsSentToday: 0,
             image: row.image || "", 
-            createdAt: serverTimestamp() // Matches exact create.html timestamp format
+            createdAt: serverTimestamp() 
           };
 
           await addDoc(collection(db, 'listings'), dealData);
