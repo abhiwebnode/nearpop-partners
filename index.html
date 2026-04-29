@@ -41,8 +41,8 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
-// 🚀 ADDED: Timestamp import
-import { getFirestore, doc, getDoc, collection, addDoc, Timestamp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
+// 🚀 FIXED: Swapped Timestamp for serverTimestamp to match create.html precisely
+import { getFirestore, doc, getDoc, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyDYUm3VV8iuLHQKJuU9fWgaRaYU0t5Dlzk",
@@ -59,9 +59,17 @@ const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
 let currentUid = null;
-let currentMerchantName = "NearPop Merchant"; // 🚀 ADDED: Store merchant name
+let currentMerchantName = "NearPop Merchant";
 
-// 2. THE GEOHASH MATH ENGINE (No live GPS required)
+// 🚀 FIXED: Added TYPE_EXTRAS payload mapping to ensure dashboard arrays are met
+const TYPE_EXTRAS = {
+  deal:   {bg:'linear-gradient(135deg,#f7971e,#ffd200)',color:'#FF5722',emoji:'🏷️',amenities:[{ic:'🏷️',lb:'Discount'},{ic:'📅',lb:'Limited Time'},{ic:'💳',lb:'Cards OK'}]},
+  rental: {bg:'linear-gradient(135deg,#667eea,#764ba2)',color:'#3B82F6',emoji:'🏠',amenities:[{ic:'🏠',lb:'For Rent'},{ic:'📶',lb:'WiFi Ready'},{ic:'🔑',lb:'Keys Ready'}]},
+  pg:     {bg:'linear-gradient(135deg,#8B5CF6,#6D28D9)',color:'#8B5CF6',emoji:'🛋️',amenities:[{ic:'🍽️',lb:'Meals'},{ic:'🔒',lb:'Security'},{ic:'📶',lb:'WiFi'}]},
+  job:    {bg:'linear-gradient(135deg,#10B981,#059669)',color:'#10B981',emoji:'💼',amenities:[{ic:'💰',lb:'Good Pay'},{ic:'📚',lb:'Training'},{ic:'🎯',lb:'Apply Now'}]},
+};
+
+// THE GEOHASH MATH ENGINE (Refined logic boundary to prevent slight shift calculation bugs)
 const B32 = "0123456789bcdefghjkmnpqrstuvwxyz";
 function encodeGeoHash(lat, lng, precision = 5) {
   let isEven = true; let latR = [-90, 90], lngR = [-180, 180];
@@ -70,10 +78,10 @@ function encodeGeoHash(lat, lng, precision = 5) {
     let mid;
     if (isEven) {
       mid = (lngR[0] + lngR[1]) / 2;
-      if (lng > mid) { ch |= (1 << (4 - bit)); lngR[0] = mid; } else { lngR[1] = mid; }
+      if (lng >= mid) { ch |= (1 << (4 - bit)); lngR[0] = mid; } else { lngR[1] = mid; }
     } else {
       mid = (latR[0] + latR[1]) / 2;
-      if (lat > mid) { ch |= (1 << (4 - bit)); latR[0] = mid; } else { latR[1] = mid; }
+      if (lat >= mid) { ch |= (1 << (4 - bit)); latR[0] = mid; } else { latR[1] = mid; }
     }
     isEven = !isEven;
     if (bit < 4) { bit++; } else { hash += B32[ch]; bit = 0; ch = 0; }
@@ -81,14 +89,13 @@ function encodeGeoHash(lat, lng, precision = 5) {
   return hash;
 }
 
-// 3. LOGGER HELPER
 function logMsg(msg) {
   const con = document.getElementById('console-log');
   con.innerHTML += msg + "<br>";
   con.scrollTop = con.scrollHeight;
 }
 
-// 4. AUTHENTICATION (The Gatekeeper)
+// AUTHENTICATION (The Gatekeeper)
 document.getElementById('login-btn').addEventListener('click', async () => {
   const status = document.getElementById('login-status');
   status.textContent = "Connecting to Firebase...";
@@ -97,7 +104,6 @@ document.getElementById('login-btn').addEventListener('click', async () => {
     const result = await signInWithPopup(auth, provider);
     const uid = result.user.uid;
     
-    // Verify they are a registered Merchant
     const userSnap = await getDoc(doc(db, 'users', uid));
     if (!userSnap.exists() || userSnap.data().role !== 'merchant') {
       await auth.signOut();
@@ -106,7 +112,6 @@ document.getElementById('login-btn').addEventListener('click', async () => {
     }
     
     currentUid = uid;
-    // 🚀 ADDED: Save their actual business name for the deals
     currentMerchantName = userSnap.data().mname || "NearPop Merchant";
     
     document.getElementById('login-screen').classList.add('hidden');
@@ -119,7 +124,7 @@ document.getElementById('login-btn').addEventListener('click', async () => {
   }
 });
 
-// 5. CSV PARSING & UPLOAD
+// CSV PARSING & UPLOAD
 document.getElementById('upload-btn').addEventListener('click', () => {
   const fileInput = document.getElementById('csv-file');
   if (!fileInput.files.length) return logMsg("❌ Please select a CSV file first.");
@@ -148,49 +153,50 @@ document.getElementById('upload-btn').addEventListener('click', () => {
             continue;
           }
 
-          // 🚀 ADDED: Generate BOTH Geohashes
           const hash5 = encodeGeoHash(lat, lng, 5);
           const hash6 = encodeGeoHash(lat, lng, 6);
 
-          // 🚀 FULLY UPDATED PAYLOAD: Matches the manual app creation exactly
+          // 🚀 FIXED: Dynamic payload matching create.html perfectly
+          const type = row.type && TYPE_EXTRAS[row.type] ? row.type : "deal";
+          const ext = TYPE_EXTRAS[type];
+          
+          // Use CSV variables if provided, otherwise default to create.html standard minimums
+          const budget = parseInt(row.budget) || 100;
+          const radius = parseInt(row.radius) || 500;
+
           const dealData = {
-            uid: currentUid,
+            type: type,
             title: row.title || "Special Offer",
             desc: row.desc || "",
             price: row.price || "",
-            type: row.type || "deal",
-            lat: lat,
-            lng: lng,
-            geohash5: hash5,
-            geohash6: hash6,
-            status: "active",
-            budget: 100,
-            dailyPopupLimit: 1000,
-            radius: 500,
-            
-            // UI Defaults
-            emoji: "🏷️",
-            bg: "linear-gradient(135deg,#f7971e,#ffd200)",
-            color: "#FF5722",
+            priceLabel: type === 'deal' ? '' : '/month',
+            emoji: ext.emoji,
+            bg: ext.bg,
+            color: ext.color,
+            amenities: ext.amenities, // Prevents UI crash map mapping
             owner: currentMerchantName,
             ownerEmoji: "🏪",
             ownerTag: "NearPop Merchant",
-            image: "",
-            priceLabel: "",
-            contact: "",
             verified: true,
-            expiryDate: null,
-            startDate: new Date().toISOString().split('T')[0],
-            
-            // Analytics Baseline
+            contact: row.contact || "",
+            lat: lat,
+            lng: lng,
+            geohash6: hash6,
+            geohash5: hash5,
+            radius: radius,
+            budget: budget,
+            status: "active",
             popups: 0,
             visits: 0,
             claims: 0,
             redemptions: 0,
+            uid: currentUid,
+            startDate: row.startDate || new Date().toISOString().split('T')[0],
+            expiryDate: row.expiryDate || null,
+            dailyPopupLimit: budget * 10,
             popupsSentToday: 0,
-            
-            // Correct Timestamp Object
-            createdAt: Timestamp.now()
+            image: row.image || "", 
+            createdAt: serverTimestamp() // Matches exact create.html timestamp format
           };
 
           await addDoc(collection(db, 'listings'), dealData);
