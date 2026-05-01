@@ -14,6 +14,7 @@
   .btn { background: #FF5722; color: #fff; border: none; padding: 14px 24px; border-radius: 12px; font-size: 16px; font-weight: 800; cursor: pointer; transition: 0.2s; font-family: inherit; width: 100%; margin-top: 20px; }
   .btn:active { transform: scale(0.95); }
   .btn:disabled { background: #475569; cursor: not-allowed; }
+  .btn-secondary { background: #3B82F6; margin-top: 10px; margin-bottom: 10px; }
   .hidden { display: none; }
   .console { background: #000; color: #10B981; padding: 16px; border-radius: 12px; text-align: left; font-family: monospace; font-size: 12px; margin-top: 20px; height: 150px; overflow-y: auto; }
 </style>
@@ -29,12 +30,14 @@
 
 <div class="card hidden" id="upload-screen">
   <h1>Upload Listings</h1>
-  <p style="color: #94A3B8; font-size: 13px;">Format required: title, desc, price, type, lat, lng</p>
+  <p style="color: #94A3B8; font-size: 13px; margin-bottom: 20px;">Format required: title, desc, price, type, contact, lat, lng</p>
   
-  <input type="file" id="csv-file" accept=".csv" style="margin: 20px 0; background: #0F0F13; padding: 10px; border-radius: 8px; width: 100%;">
+  <!-- 🚀 NEW: Download Sample CSV Button -->
+  <button class="btn btn-secondary" id="download-sample-btn">⬇️ Download Sample CSV</button>
+  
+  <input type="file" id="csv-file" accept=".csv" style="margin: 15px 0; background: #0F0F13; padding: 10px; border-radius: 8px; width: 100%; box-sizing: border-box;">
   
   <button class="btn" id="upload-btn">Start Bulk Import</button>
-  
   <div class="console" id="console-log">Awaiting CSV file...<br></div>
 </div>
 
@@ -122,6 +125,26 @@ document.getElementById('login-btn').addEventListener('click', async () => {
   }
 });
 
+// 🚀 NEW: SAMPLE CSV GENERATOR
+document.getElementById('download-sample-btn').addEventListener('click', () => {
+  const headers = "title,desc,price,type,contact,lat,lng,radius,budget,image\n";
+  const row1 = "\"Super Sale 50% Off\",\"Massive discounts on all electronics this week!\",\"50% OFF\",\"deal\",\"+91 9876543210\",28.408900,77.317800,500,100,\"\"\n";
+  const row2 = "\"Luxury 2BHK Flat\",\"Fully furnished ready to move in 2BHK flat.\",\"₹15,000/mo\",\"rental\",\"+91 9123456789\",28.410500,77.320100,1500,50,\"\"";
+  
+  const csvContent = headers + row1 + row2;
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  link.setAttribute("download", "nearpop_bulk_sample.csv");
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  
+  logMsg("⬇️ Sample CSV downloaded.");
+});
+
 // CSV PARSING & UPLOAD
 document.getElementById('upload-btn').addEventListener('click', () => {
   const fileInput = document.getElementById('csv-file');
@@ -151,7 +174,6 @@ document.getElementById('upload-btn').addEventListener('click', () => {
             continue;
           }
 
-          // 🚀 FIXED: Standardize coordinates exactly to 6 decimal places to sync perfectly with create.html
           lat = +lat.toFixed(6);
           lng = +lng.toFixed(6);
 
